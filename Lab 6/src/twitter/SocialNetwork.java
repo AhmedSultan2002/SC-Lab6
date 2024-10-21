@@ -3,9 +3,14 @@
  */
 package twitter;
 
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * SocialNetwork provides methods that operate on a social network.
@@ -25,6 +30,21 @@ import java.util.Set;
  */
 public class SocialNetwork {
 
+    public static Set<String> extractMentionedUsers(List<Tweet> tweets) {
+        Set<String> mentionedUsers = new HashSet<>();
+        
+        Pattern mentionPattern = Pattern.compile("@(\\w+)");
+
+        for (Tweet tweet : tweets) {
+            Matcher matcher = mentionPattern.matcher(tweet.getText());
+            while (matcher.find()) {
+                String mentionedUser = matcher.group(1).toLowerCase();
+                mentionedUsers.add(mentionedUser);
+            }
+        }
+
+        return mentionedUsers;
+    }
     /**
      * Guess who might follow whom, from evidence found in tweets.
      * 
@@ -41,8 +61,23 @@ public class SocialNetwork {
      *         either authors or @-mentions in the list of tweets.
      */
     public static Map<String, Set<String>> guessFollowsGraph(List<Tweet> tweets) {
-        throw new RuntimeException("not implemented");
+        Map<String, Set<String>> followsGraph = new HashMap<>();
+
+        for (Tweet tweet : tweets) {
+            String author = tweet.getAuthor().toLowerCase();
+            Set<String> mentionedUsers = extractMentionedUsers(List.of(tweet));
+
+            // If there are no mentioned users
+            if (!mentionedUsers.isEmpty()) {
+                followsGraph.putIfAbsent(author, new HashSet<>());
+                followsGraph.get(author).addAll(mentionedUsers);
+            }
+        }
+
+        return followsGraph;
+        
     }
+
 
     /**
      * Find the people in a social network who have the greatest influence, in
@@ -53,8 +88,21 @@ public class SocialNetwork {
      * @return a list of all distinct Twitter usernames in followsGraph, in
      *         descending order of follower count.
      */
-    public static List<String> influencers(Map<String, Set<String>> followsGraph) {
-        throw new RuntimeException("not implemented");
-    }
+	public static List<String> influencers(Map<String, Set<String>> followsGraph) {
+	    Map<String, Integer> followerCount = new HashMap<>();
+	
+	    // Counting Followers
+	    for (Set<String> followers : followsGraph.values()) {
+	        for (String user : followers) {
+	            followerCount.put(user, followerCount.getOrDefault(user, 0) + 1);
+	        }
+	    }
+	
+	    // Sorting Users
+	    return followerCount.entrySet().stream()
+	        .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
+	        .map(Map.Entry::getKey)
+	        .collect(Collectors.toList());
+	}
 
 }
